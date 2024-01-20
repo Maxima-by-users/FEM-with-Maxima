@@ -1,0 +1,2525 @@
+/*
+load("../Library/my_funs.mac");
+*/
+
+
+/*
+2D linear elasticity element
+Classical Plate Elements
+elemental force matrix
+analytical integration
+
+Inputs:
+ncoor(2,4) : nodal point coordinates
+ncoor[1,:] : x-direction
+ncoor[2,:] : y-direction
+
+nen : number of nodes per element
+
+body : body forces in the x- and y-directions
+
+Output:
+
+bf_el : elemental body force matrix
+*/
+body_2D_plane_analytical(ncoor, nen, body) :=
+block([current_point, coef, i, l, xi, eta],
+
+/* initialize the elemental stiffness matrix */
+b_force : zeromatrix(2*nen, 1),
+
+/* store the current quadrature point coordinates */
+current_point[1] : xi,
+current_point[2] : eta,
+
+/* calculate the shape functions and their derivatives at the current quadrature point*/
+if (nen = 4) then (
+[shape, jac] : shape_functions_2d(current_point, ncoor) )
+elseif (nen = 3) then (
+[shape, jac] : triangular_shape_functions_2d(current_point, ncoor)
+),
+
+/* calculation of B-matrix */
+B_mat : zeromatrix(nen*2,2),
+for i:1 thru nen do (
+B_mat[(i-1)*2+1,1] : shape[3,i],
+B_mat[(i-1)*2+2,2] : shape[3,i]
+),
+
+/* calculation of thickness */
+current_point_x : 0,
+current_point_y : 0,
+for i:1 thru nen do(
+current_point_x : current_point_x + ncoor[i][1]*shape[3,i],
+current_point_y : current_point_y + ncoor[i][2]*shape[3,i]
+),
+th : thickness(current_point_x,current_point_y),
+
+if (nen = 4) then (
+bf_el : integrate(integrate(th*(B_mat.body)*jac,eta,-1,1),xi,-1,1) )
+elseif (nen = 3) then (
+bf_el : integrate(integrate(th*(B_mat.body)*jac,xi,0,1-eta),eta,0,1)
+),
+
+/* return the elemental stiffness matrix */
+return(bf_el)
+)$
+
+/*
+2D linear elasticity element
+Classical Plate Elements
+elemental force matrix
+analytical integration
+
+Inputs:
+ncoor(2,4) : nodal point coordinates
+ncoor[1,:] : x-direction
+ncoor[2,:] : y-direction
+
+nen : number of nodes per element
+pressures : pressures in the x- and y-directions
+
+
+Output:
+
+bf_el : elemental body force matrix
+
+*/
+body_el_2D_Kirschhoff_plate_analytical(ncoor, nen) :=
+block([],
+
+/* initialize the elemental stiffness matrix */
+bf_el : zeromatrix(3*nen, 1),
+
+/* store the current quadrature point coordinates */
+current_point[1] : xi,
+current_point[2] : eta,
+
+/* calculate the shape functions and their derivatives at the current quadrature point*/
+if (nen = 4) then (
+/* calculate the shape functions and their derivatives at the current quadrature point*/
+[shape, shape2s, jac, shape_l] :shape_functions_2d_Kirschhoff_plate(current_point, ncoor) )
+elseif (nen = 3) then (
+/* to be added later */
+print("not programmed yet")
+),
+
+/* calculation of B-matrix */
+N_mat : zeromatrix(nen*3,1),
+for i:1 thru nen do (
+N_mat[(i-1)*3+1,1] : shape[3,1,i],
+N_mat[(i-1)*3+2,1] : shape[3,2,i],
+N_mat[(i-1)*3+3,1] : shape[3,3,i]
+),
+
+/* calculation of thickness */
+current_point_x : 0,
+current_point_y : 0,
+for i:1 thru nen do(
+current_point_x : current_point_x + ncoor[i][1]*shape_l[3,i],
+current_point_y : current_point_y + ncoor[i][2]*shape_l[3,i]
+),
+qz : body_force(current_point_x,current_point_y),
+
+if (nen = 4) then (
+bf_el : integrate(integrate(ratsimp((N_mat*qz)*jac),eta,-1,1),xi,-1,1) )
+elseif (nen = 3) then (
+/* bf_el : integrate(integrate(th*(B_mat.body)*jac,xi,0,1-eta),eta,0,1) */
+print("not programmed yet")
+),
+
+/* return the elemental stiffness matrix */
+return(ratsimp(bf_el))
+
+)$
+
+/*
+2D Reissner Mindlin Plate Element
+analytical integration
+
+Inputs:
+ncoor(2,4) : nodal point coordinates
+ncoor[1,:] : x-direction
+ncoor[2,:] : y-direction
+
+nen : number of nodes per element
+
+body : body forces
+
+Output:
+
+f_el : elemental force matrix
+
+*/
+body_el_2D_Reissner_Mindlin_plate_analytical(ncoor, nen) :=
+block([],
+
+/* initialize the elemental stiffness matrix */
+bf_el : zeromatrix(3*nen, 1),
+
+/* store the current quadrature point coordinates */
+current_point[1] : xi,
+current_point[2] : eta,
+
+/* calculate the shape functions and their derivatives at the current quadrature point*/
+if (nen = 4) then (
+/* calculate the shape functions and their derivatives at the current quadrature point*/
+[shape, jac] : shape_functions_2d(current_point, ncoor) )
+elseif (nen = 3) then (
+/* to be added later */
+print("not programmed yet")
+),
+
+/* calculation of B-matrix */
+N_mat : zeromatrix(nen*3,3),
+for i:1 thru nen do (
+N_mat[(i-1)*3+1,1] : shape[3,i],
+N_mat[(i-1)*3+2,2] : shape[3,i],
+N_mat[(i-1)*3+3,3] : shape[3,i]
+),
+
+/* calculation of thickness */
+current_point_x : 0,
+current_point_y : 0,
+for i:1 thru nen do(
+current_point_x : current_point_x + ncoor[i][1]*shape[3,i],
+current_point_y : current_point_y + ncoor[i][2]*shape[3,i]
+),
+qz : q_z(current_point_x,current_point_y),
+mx : m_x(current_point_x,current_point_y),
+my : m_y(current_point_x,current_point_y),
+
+body : transpose(matrix([qz,mx,my])),
+
+bf_el : integrate(integrate(ratsimp((N_mat.body)*jac),eta,-1,1),xi,-1,1),
+
+/* return the elemental stiffness matrix */
+return(ratsimp(bf_el))
+
+)$
+
+/*
+Global (Master) Matrix for Body Forces
+2D Plate Problem
+
+Inputs:
+nodxz Nodal coordinates
+elenod Element end nodes
+lint Number of quadrature points
+nen Number of element nodes
+
+Output:
+fbody Global matrix of body forces
+
+*/
+body_gl_2D_Kirschhoff_Plate(nodxy, elenod, nen) :=
+block([numele,numnod,neldof,e,eftab,i,j,ii,jj,ncoor,Ke,K,K_els],
+numele : length(elenod),
+numnod : length(nodxy),
+fbody : zeromatrix(3*numnod, 1),
+for e:1 thru numele do (
+eftab : makelist(0,nen*3),
+ncoor : makelist(0,nen),
+for i:1 thru nen do(
+eftab[3*i-2] : 3*elenod[e][i]-2,
+eftab[3*i-1] : 3*elenod[e][i]-1,
+eftab[3*i] : 3*elenod[e][i],
+ncoor[i] : nodxy[elenod[e][i]]
+),
+kill(fbody_el),
+fbody_el : body_el_2D_Kirschhoff_plate_analytical(ncoor, nen),
+neldof: length(fbody_el),
+i1 : 0,
+for i:1 thru neldof do(
+ii : eftab[i],
+fbody[ii,1] : fbody[ii,1]+fbody_el[i,1]
+)
+),
+return(fbody)
+)$
+
+/*
+Global (Master) Body Forces Matrix
+2D Planar Problem
+
+Inputs:
+nodxz Nodal coordinates
+elenod Element end nodes
+lint Number of quadrature points
+nen Number of element nodes
+Output:
+K_els Local stiffness matrix for individual elements
+K Global (Master) Stiffness matrix
+*/
+body_gl_2D_Plane(nodxy, elenod, nen, body) :=
+block([numele,numnod,neldof,e,eftab,i,j,ii,jj,ncoor,Ke,K,K_els],
+numele : length(elenod),
+numnod : length(nodxy),
+fbody : zeromatrix(2*numnod, 1),
+for e:1 thru numele do (
+eftab : makelist(0,nen*2),
+ncoor : makelist(0,nen),
+for i:1 thru nen do(
+eftab[2*i-1] : 2*elenod[e][i]-1,
+eftab[2*i] : 2*elenod[e][i],
+ncoor[i] : nodxy[elenod[e][i]]
+),
+kill(fbody_el),
+fbody_el : body_2D_plane_analytical(ncoor, nen, body),
+neldof: length(fbody_el),
+i1 : 0,
+for i:1 thru neldof do(
+ii : eftab[i],
+fbody[ii,1] : fbody[ii,1]+fbody_el[i,1]
+)
+),
+return(fbody)
+)$
+
+/*
+Global (Master) Matrix for Body Forces
+2D Reissner Mindlin Plate Problem
+
+Inputs:
+nodxz Nodal coordinates
+elenod Element end nodes
+lint Number of quadrature points
+nen Number of element nodes
+
+Output:
+fbody Global matrix of body forces
+
+*/
+body_gl_2D_Reissner_Mindlin_plate(nodxy, elenod, nen) :=
+block([numele,numnod,neldof,e,eftab,i,j,ii,jj,ncoor,Ke,K,K_els],
+numele : length(elenod),
+numnod : length(nodxy),
+fbody : zeromatrix(3*numnod, 1),
+for e:1 thru numele do (
+eftab : makelist(0,nen*3),
+ncoor : makelist(0,nen),
+for i:1 thru nen do(
+eftab[3*i-2] : 3*elenod[e][i]-2,
+eftab[3*i-1] : 3*elenod[e][i]-1,
+eftab[3*i] : 3*elenod[e][i],
+ncoor[i] : nodxy[elenod[e][i]]
+),
+kill(fbody_el),
+fbody_el : body_el_2D_Reissner_Mindlin_plate_analytical(ncoor, nen),
+neldof: length(fbody_el),
+i1 : 0,
+for i:1 thru neldof do(
+ii : eftab[i],
+fbody[ii,1] : fbody[ii,1]+fbody_el[i,1]
+)
+),
+return(fbody)
+)$
+
+/*
+2D linear elasticity element
+elemental force matrix
+pressure based
+analytical integration
+
+Inputs:
+ncoor(2,4) : nodal point coordinates
+ncoor[1,:] : x-direction
+ncoor[2,:] : y-direction
+
+nen : number of nodes per element
+
+pressures : pressures in the x- and y-directions
+
+Output:
+
+f_el : elemental force matrix
+
+*/
+f_edges_2D_plane_analytical(ncoor, pressures_e, nen, edges_e) :=
+block([],
+
+/* initialize the elemental stiffness matrix */
+f_el : zeromatrix(2*nen, 1),
+
+/* loop over all edges */
+for e:1 thru length(edges_e) do (
+/* loop over all nodal pairs of the edges */
+for n:1 thru (length(edges[e])-1) do (
+Px : pressures_e[e][1],
+Py : pressures_e[e][2],
+n1 : edges_e[e][n],
+n2 : edges_e[e][n+1],
+ncoor_temp : [ncoor[n1], ncoor[n2]],
+
+/* calculate the shape functions and their derivatives at the quadrature point*/
+[shape_temp, ~, jac_temp] : shape_1d_nNodes_rod(2,ncoor_temp,xi),
+
+/* calcualtion of N_temp */
+
+/* define an array to store N matrices temporarily */
+N_temp : zeromatrix(nen*2,1),
+
+N_temp[n1*2 - 1,1] : shape_temp[1,1]*Px,
+N_temp[n1*2,1] : shape_temp[1,1]*Py,
+N_temp[n2*2 - 1,1] : shape_temp[1,2]*Px,
+N_temp[n2*2,1] : shape_temp[1,2]*Py,
+
+/* calculation of thickness on the current edge */
+current_point_x : 0,
+current_point_y : 0,
+for i:1 thru 2 do(
+current_point_x : current_point_x + ncoor_temp[i][1]*shape_temp[1,i],
+current_point_y : current_point_y + ncoor_temp[i][2]*shape_temp[1,i]
+),
+th : thickness(current_point_x,current_point_y),
+
+f_el : f_el + integrate(th*(N_temp)*(jac_temp),xi,-1,1)
+)
+),
+/* return the elemental force matrix */
+return(f_el)
+)$
+
+/*
+2D linear elasticity element
+elemental force matrix
+pressure based
+numerical integration
+(for linear elements)
+
+Inputs:
+ncoor(2,4) : nodal point coordinates
+ncoor[1,:] : x-direction
+ncoor[2,:] : y-direction
+
+nen : number of nodes per element
+
+pressures : pressures in the x- and y-directions
+
+Output:
+
+f_el : elemental force matrix
+
+*/
+f_edges_2D_plane_numerical(ncoor, pressures, nen, edges) :=
+block([e],
+
+/* initialize the elemental stiffness matrix */
+f_el : zeromatrix(2*nen, 1),
+
+/* calculate the quadrature points */
+qps : quadrature_1d(2),
+
+/* loop over all edges */
+for e:1 thru length(edges) do (
+/* loop over all nodal pairs of the edges */
+for n:1 thru (length(edges[e])-1) do (
+kill(Px,Py,n1,n2,ncoor_temp),
+Px : pressures[e][1],
+Py : pressures[e][2],
+n1 : edges[e][n],
+n2 : edges[e][n+1],
+ncoor_temp : [ncoor[n1], ncoor[n2]],
+/* loop over quadrature points */
+for l:1 thru 2 do (
+
+/* calculate the shape functions and their derivatives at the current quadrature point*/
+[shape_temp, ~, jac_temp] : shape_1d_nNodes_rod(2,ncoor_temp,qps[l,1]),
+
+/* calcualtion of N_temp */
+
+/* define an array to store N matrices temporarily */
+N_temp : zeromatrix(nen*2,1),
+
+N_temp[n1*2 - 1,1] : shape_temp[1,1]*Px,
+N_temp[n1*2,1] : shape_temp[1,1]*Py,
+N_temp[n2*2 - 1,1] : shape_temp[1,2]*Px,
+N_temp[n2*2,1] : shape_temp[1,2]*Py,
+
+/* calculation of thickness on the current edge */
+current_point_x : 0,
+current_point_y : 0,
+for i:1 thru 2 do(
+current_point_x : current_point_x + ncoor_temp[i][1]*shape_temp[1,i],
+current_point_y : current_point_y + ncoor_temp[i][2]*shape_temp[1,i]
+),
+th : thickness(current_point_x,current_point_y),
+
+f_el : f_el + (th*(N_temp)*jac_temp*qps[l,2])
+)
+)
+),
+/* return the elemental force matrix */
+return(f_el)
+)$
+
+/*
+2D linear elasticity element
+elemental force matrix
+pressure based
+analytical integration
+
+Inputs:
+ncoor(2,4) : nodal point coordinates
+ncoor[1,:] : x-direction
+ncoor[2,:] : y-direction
+
+nen : number of nodes per element
+
+pressures : pressures in the x- and y-directions
+
+Output:
+
+f_el : elemental force matrix
+
+*/
+f_el_2D_plane_analytical(ncoor, pressures, nen, edges) :=
+block([],
+
+/* initialize the elemental stiffness matrix */
+f_el : zeromatrix(2*nen, 1),
+
+/* store the current quadrature point coordinates */
+current_point[1] : xi,
+current_point[2] : eta,
+
+/* calculate the shape functions and their derivatives at the current quadrature point */
+[shape, ~] : shape_functions_2d(current_point, ncoor),
+
+/* define edges */
+edge[1] : [xi, eta=-1], /* 1-2 */
+edge[2] : [eta, xi=+1], /* 2-3 */
+edge[3] : [xi, eta=+1], /* 3-4 */
+edge[4] : [eta, xi=-1], /* 4-1 */
+
+/* define an array to store N matrices temporarily */
+N_temp : zeromatrix(nen*2,1),
+
+/* loop over all edges */
+for e:1 thru 4 do (
+Px : pressures[e][1],
+Py : pressures[e][2],
+
+/* calculate the shape functions and their derivatives at the current quadrature point*/
+for i:1 thru nen do (
+shape_temp[3,i] : at(shape[3,i],edge[e][2])
+),
+
+/* calculate the jacobian for the current edge */
+n1 : edges[e][1],
+n2 : edges[e][2],
+jac_temp : sqrt( (ncoor[n2][2]-ncoor[n1][2])^2 + (ncoor[n2][1]-ncoor[n1][1])^2 ),
+
+/* calcualtion of N_temp */
+for i:1 thru nen do (
+N_temp[i*2 - 1,1] : shape_temp[3,i]*Px,
+N_temp[i*2,1] : shape_temp[3,i]*Py
+),
+
+/* calculation of thickness on the current edge */
+current_point_x : 0,
+current_point_y : 0,
+for i:1 thru nen do(
+current_point_x : current_point_x + ncoor[i][1]*shape_temp[3,i],
+current_point_y : current_point_y + ncoor[i][2]*shape_temp[3,i]
+),
+th : thickness(current_point_x,current_point_y),
+
+f_el : f_el + integrate(th*(N_temp)*(jac_temp/2),edge[e][1],-1,1)
+
+),
+
+/* return the elemental force matrix */
+return(f_el)
+)$
+
+/*
+2D linear elasticity element
+elemental force matrix
+pressure based
+numerical integration
+
+Inputs:
+ncoor(2,4) : nodal point coordinates
+ncoor[1,:] : x-direction
+ncoor[2,:] : y-direction
+
+nen : number of nodes per element
+
+pressures : pressures in the x- and y-directions
+
+Output:
+
+f_el : elemental force matrix
+
+*/
+f_el_2D_plane_numerical(ncoor, pressures, nen, edges) :=
+block([],
+
+/* initialize the elemental stiffness matrix */
+f_el : zeromatrix(2*nen, 1),
+
+/* calculate the quadrature points */
+qps : quadrature_1d(2),
+
+/* define quadrature points on the edges */
+edge[1] : [[qps[1,1], -1],[qps[2,1], -1]], /* 1-2 */
+edge[2] : [[+1, qps[1,1]],[+1, qps[2,1]]], /* 2-3 */
+edge[3] : [[qps[2,1], +1],[qps[1,1], +1]], /* 3-4 */
+edge[4] : [[-1, qps[2,1]],[-1, qps[1,1]]], /* 4-1 */
+
+/* define an array to store N matrices temporarily */
+N_temp : zeromatrix(nen*2,1),
+
+/* loop over all edges */
+for e:1 thru 4 do (
+Px : pressures[e][1],
+Py : pressures[e][2],
+
+for l:1 thru 2 do (
+/* store the current quadrature point coordinates */
+current_point[1] : edge[e][l][1],
+current_point[2] : edge[e][l][2],
+
+/* calculate the shape functions and their derivatives at the current quadrature point*/
+kill(shape_temp,jac_temp),
+[shape_temp, ~] : shape_functions_2d(current_point, ncoor),
+
+/* calculate the jacobian for the current edge */
+n1 : edges[e][1],
+n2 : edges[e][2],
+jac_temp : sqrt( (ncoor[n2][2]-ncoor[n1][2])^2 + (ncoor[n2][1]-ncoor[n1][1])^2 ),
+
+/* calcualtion of N_temp */
+for i:1 thru nen do (
+N_temp[i*2 - 1,1] : shape_temp[3,i]*Px,
+N_temp[i*2,1] : shape_temp[3,i]*Py
+),
+
+/* calculation of thickness on the current edge */
+current_point_x : 0,
+current_point_y : 0,
+for i:1 thru nen do(
+current_point_x : current_point_x + ncoor[i][1]*shape_temp[3,i],
+current_point_y : current_point_y + ncoor[i][2]*shape_temp[3,i]
+),
+th : thickness(current_point_x,current_point_y),
+
+f_el : f_el + (th*(N_temp)*(jac_temp/2)*qps[l,2])
+)
+),
+
+/* return the elemental force matrix */
+return(f_el)
+)$
+
+/*
+Flattening an array
+Inputs:
+nv input array
+Output:
+nv flattened array
+*/
+FlatNodePartVector(nv) := flatten(nv)$
+
+/*
+2D linear elasticity element
+Classical Plate Elements
+elemental stiffness matrix
+analytical integration
+
+Inputs:
+ncoor(2,4) : nodal point coordinates
+ncoor[1,:] : x-direction
+ncoor[2,:] : y-direction
+
+nen : number of nodes per element
+
+type : type of the element
+"plane stress" or "plane strain"
+
+mat : material properies
+mat[1] : Young’s modulus
+mat[2] : Poison’s ratio
+
+Output:
+shp(3,4) : shape functions array
+shp(1,:) : derivatives in the x-direction
+shp(2,:) : derivatives in the y-direction
+shp(3,:) : shape functions
+
+*/
+k_el_2D_Kirschhoff_plate_analytical(ncoor, mat, nen) :=
+block([current_point, coef, i, l, xi, eta,K_el],
+assume(xi>=-1,xi<=1,eta>=-1,eta<1),
+
+/* initialize the elemental stiffness matrix */
+K_el : zeromatrix(3*nen, 3*nen),
+
+/* store the current quadrature point coordinates */
+current_point[1] : xi,
+current_point[2] : eta,
+
+/* calculate the shape functions and their derivatives at the current quadrature point*/
+if (nen = 4) then (
+[shape, shape2s, jac, shape_l] :shape_functions_2d_Kirschhoff_plate(current_point, ncoor) )
+elseif (nen = 3) then (
+L12 : sqrt((ncoor[2][1]-ncoor[1][1])^2+(ncoor[2][2]-ncoor[1][2])^2),
+
+c : (ncoor[2][1]-ncoor[1][1])/L12,
+s : (ncoor[2][2]-ncoor[1][2])/L12,
+
+T_mat : matrix(
+[1,0,0,0,0,0,0,0,0],
+[0,c,-s,0,0,0,0,0,0],
+[0,s,c,0,0,0,0,0,0],
+[0,0,0,1,0,0,0,0,0],
+[0,0,0,0,c,-s,0,0,0],
+[0,0,0,0,s,c,0,0,0],
+[0,0,0,0,0,0,1,0,0],
+[0,0,0,0,0,0,0,c,-s],
+[0,0,0,0,0,0,0,s,c]
+),
+
+TX_mat : matrix(
+[c,-s,0,0,0,0],
+[s, c,0,0,0,0],
+[0, 0,c,-s,0,0],
+[0, 0,s,c,0,0],
+[0, 0,0,0,c,-s],
+[0, 0,0,0,s,c]
+),
+
+X_mat : matrix(
+[ncoor[1][1],ncoor[1][2],
+ncoor[2][1],ncoor[2][2],
+ncoor[3][1],ncoor[3][2]]),
+
+x_mat : TX_mat . X_mat,
+
+x1 : x_mat[1][1],
+y1 : x_mat[2][1],
+x2 : x_mat[3][1],
+y2 : x_mat[4][1],
+x3 : x_mat[5][1],
+y3 : x_mat[6][1],
+
+[shape, shape2s, jac, shape_l] :triangular_shape_functions_2d_Kirschhoff_plate_1(current_point, ncoor)
+),
+
+/* calculation of B-matrix */
+B_mat : zeromatrix(nen*3,3),
+ic : 0,
+for i:1 thru nen do (
+for j:1 thru 3 do (
+ic : ic + 1,
+B_mat[ic,1] : ratsimp(factor(shape2s[1,j,i])),
+B_mat[ic,2] : ratsimp(factor(shape2s[2,j,i])),
+B_mat[ic,3] : ratsimp(factor(2*shape2s[3,j,i]))
+)
+),
+/* calculation of BT_matrix */
+BT_mat : transpose(B_mat),
+
+/* calculation of thickness */
+current_point_x : 0,
+current_point_y : 0,
+for i:1 thru nen do(
+current_point_x : current_point_x + ncoor[i][1]*shape_l[3,i],
+current_point_y : current_point_y + ncoor[i][2]*shape_l[3,i]
+),
+th : thickness(current_point_x,current_point_y),
+
+/* calculation of the elasticity matrix */
+C_mat : zeromatrix(3,3),
+coef : mat[1]*(th^3)/(12*(1-mat[2]^2)),
+C_mat[1,1] : 1,
+C_mat[1,2] : mat[2],
+C_mat[2,1] : mat[2],
+C_mat[2,2] : 1,
+C_mat[3,3] : (1-mat[2])/2,
+C_mat : coef*C_mat,
+if (nen = 4) then (
+/*K_el : integrate(integrate(factor(factor(ratsimp(B_mat)).
+(C_mat.factor(ratsimp(BT_mat))))*jac,eta,-1,1),xi,-1,1) */
+K_el : realpart(integrate(factor(B_mat.(C_mat.BT_mat)*jac),eta,-1,1)),
+K_el : realpart(integrate(factor(K_el),xi,-1,1))
+) elseif (nen = 3) then (
+
+A : (1/2)*(ncoor[1][1]*ncoor[2][2]-ncoor[2][1]*ncoor[1][2]+ncoor[2][1]
+*ncoor[3][2]-ncoor[3][1]*ncoor[2][2]+ncoor[3][1]*ncoor[1][2]
+-ncoor[1][1]*ncoor[3][1]),
+
+Xc : (ncoor[1][1]+ncoor[2][1]+ncoor[3][1])/3,
+Yc : (ncoor[1][2]+ncoor[2][2]+ncoor[3][2])/3,
+
+sum_x2 : (ncoor[3][1]^2 + (ncoor[2][1]+ncoor[1][1])*ncoor[3][1] +ncoor[2][1]^2 + ncoor[1][1]*ncoor[2][1] + ncoor[1][1]^2) / (2*ncoor[3][1]+2*ncoor[2][1]+2*ncoor[1][1] ),
+
+sum_y2 : (ncoor[3][2]^2 + (ncoor[2][2]+ncoor[1][2])*ncoor[3][2] +ncoor[2][2]^2 + ncoor[1][2]*ncoor[2][2] + ncoor[1][2]^2) / (2*ncoor[3][2]+2*ncoor[2][2]+2*ncoor[1][2] ),
+
+sum_xy : (
+(6*ncoor[3][1]+3*ncoor[2][1]+3*ncoor[1][1])*ncoor[3][2] +
+(3*ncoor[3][1]+6*ncoor[2][1]+3*ncoor[1][1])*ncoor[2][2] +
+(3*ncoor[3][1]+3*ncoor[2][1]+6*ncoor[1][1])*ncoor[1][2] )
+/ (
+(4*ncoor[3][1]+4*ncoor[2][1]+4*ncoor[1][1])*
+(ncoor[3][2]+ncoor[2][2]+ncoor[1][2]) ),
+
+int_1 : A,
+int_2 : A*Xc,
+int_3 : A*Yc,
+int_4 : A*Xc + sum_x2,
+int_5 : A*Yc + sum_y2,
+int_6 : Xc*Yc + sum_xy,
+
+K_temp : ratsubst(int_6,x*y,ratsimp(factor(B_mat.(C_mat.BT_mat)))),
+K_temp : subst([y^2=int_5,x^2=int_4,y=int_3,x=int_2],K_temp),
+
+K_el : ratsimp(factor(transpose(T_mat).(ratsimp(K_temp).T_mat)))
+
+),
+
+/* return the elemental stiffness matrix */
+return(K_el)
+)$
+
+/*
+2D linear elasticity element
+Classical Plate Elements
+elemental stiffness matrix
+numerical integration
+
+Inputs:
+ncoor(2,4) : nodal point coordinates
+ncoor[1,:] : x-direction
+ncoor[2,:] : y-direction
+
+nen : number of nodes per element
+
+type : type of the element
+"plane stress" or "plane strain"
+
+mat : material properies
+mat[1] : Young’s modulus
+mat[2] : Poison’s ratio
+
+Output:
+shp(3,4) : shape functions array
+shp(1,:) : derivatives in the x-direction
+shp(2,:) : derivatives in the y-direction
+shp(3,:) : shape functions
+
+*/
+k_el_2D_Kirschhoff_plate_numerical(ncoor, mat, nen, nqp) :=
+block([current_point, coef, i, l, xi, eta, K_el],
+
+/* initialize the elemental stiffness matrix */
+K_el : zeromatrix(3*nen, 3*nen),
+
+/* calculate the quadrature points */
+qps : quadrature_2d(nqp),
+
+/* loop over the quadrature points */
+for l:1 thru nqp do(
+
+/* store the current quadrature point coordinates */
+current_point[1] : qps[l,1],
+current_point[2] : qps[l,2],
+
+/* calculate the shape functions and their derivatives at the current quadrature point*/
+[shape, shape2s, jac, shape_l] :shape_functions_2d_Kirschhoff_plate(current_point, ncoor),
+
+/* calculation of B-matrix */
+B_mat : zeromatrix(nen*3,3),
+ic : 0,
+for i:1 thru nen do (
+for j:1 thru 3 do (
+ic : ic + 1,
+B_mat[ic,1] : shape2s[1,j,i],
+B_mat[ic,2] : shape2s[2,j,i],
+B_mat[ic,3] : 2*shape2s[3,j,i]
+)
+),
+
+/* calculation of BT_matrix */
+BT_mat : transpose(B_mat),
+
+/* calculation of thickness */
+current_point_x : 0,
+current_point_y : 0,
+for i:1 thru nen do(
+current_point_x : current_point_x + ncoor[i][1]*shape_l[3,i],
+current_point_y : current_point_y + ncoor[i][2]*shape_l[3,i]
+),
+th : thickness(current_point_x,current_point_y),
+
+/* calculation of the elasticity matrix */
+C_mat : zeromatrix(3,3),
+coef : mat[1]*(th^3)/(12*(1-mat[2]^2)),
+C_mat[1,1] : 1,
+C_mat[1,2] : mat[2],
+C_mat[2,1] : mat[2],
+C_mat[2,2] : 1,
+C_mat[3,3] : (1-mat[2])/2,
+C_mat : coef*C_mat,
+
+K_el : K_el + (B_mat.(C_mat.BT_mat))*jac*qps[l,3]
+
+),
+
+/* return the elemental stiffness matrix */
+return(K_el)
+)$
+
+/*
+2D linear elasticity element
+plane stres and plane strain
+elemental stiffness matrix
+analytical integration
+
+Inputs:
+ncoor(2,4) : nodal point coordinates
+ncoor[1,:] : x-direction
+ncoor[2,:] : y-direction
+
+nen : number of nodes per element
+
+type : type of the element
+"plane stress" or "plane strain"
+
+mat : material properies
+mat[1] : Young’s modulus
+mat[2] : Poison’s ratio
+
+Output:
+shp(3,4) : shape functions array
+shp(1,:) : derivatives in the x-direction
+shp(2,:) : derivatives in the y-direction
+shp(3,:) : shape functions
+
+*/
+k_el_2D_plane_analytical(ncoor, mat, nen, type) :=
+block([current_point, coef, i, l, xi, eta],
+
+/* initialize the elemental stiffness matrix */
+K_el : zeromatrix(2*nen, 2*nen),
+
+/* store the current quadrature point coordinates */
+current_point[1] : xi,
+current_point[2] : eta,
+
+/* calculate the shape functions and their derivatives at the current quadrature point*/
+if (nen = 4) then (
+[shape, jac] : shape_functions_2d(current_point, ncoor) )
+elseif (nen = 3) then (
+[shape, jac] : triangular_shape_functions_2d(current_point, ncoor)
+),
+
+/* calculation of B-matrix */
+B_mat : zeromatrix(nen*2,3),
+for i:1 thru nen do (
+B_mat[(i-1)*2+1,1] : shape[1,i],
+B_mat[(i-1)*2+1,3] : shape[2,i],
+B_mat[(i-1)*2+2,2] : shape[2,i],
+B_mat[(i-1)*2+2,3] : shape[1,i]
+),
+
+/* calculation of BT_matrix */
+BT_mat : transpose(B_mat),
+
+/* calculation of the elasticity matrix */
+if (type = "plane stress") then (
+C_mat : zeromatrix(3,3),
+coef : mat[1]/(1-mat[2]^2),
+C_mat[1,1] : 1,
+C_mat[1,2] : mat[2],
+C_mat[2,1] : mat[2],
+C_mat[2,2] : 1,
+C_mat[3,3] : (1-mat[2])/2,
+C_mat : coef*C_mat
+) elseif (type = "plane strain") then (
+C_mat : zeromatrix(3,3),
+coef : mat[1]/((1+mat[2])*(1-2*mat[2])),
+C_mat[1,1] : 1-mat[2],
+C_mat[1,2] : mat[2],
+C_mat[2,1] : mat[2],
+C_mat[2,2] : 1-mat[2],
+C_mat[3,3] : (1-2*mat[2])/2,
+C_mat : coef*C_mat
+),
+
+/* calculation of thickness */
+current_point_x : 0,
+current_point_y : 0,
+for i:1 thru nen do(
+current_point_x : current_point_x + ncoor[i][1]*shape[3,i],
+current_point_y : current_point_y + ncoor[i][2]*shape[3,i]
+),
+th : thickness(current_point_x,current_point_y),
+
+if (nen = 4) then (
+K_el :integrate(integrate(th*(B_mat.(C_mat.BT_mat))*jac,eta,-1,1),xi,-1,1) )
+elseif (nen = 3) then (
+K_el :integrate(integrate(th*(B_mat.(C_mat.BT_mat))*jac,eta,0,1-xi),xi,0,1)
+),
+
+/* return the elemental stiffness matrix */
+return(K_el)
+)$
+
+/*
+2D linear elasticity element
+plane stres and plane strain
+elemental stiffness matrix
+numerical integration
+
+Inputs:
+ncoor[4][2] : nodal point coordinates
+ncoor[:][1] : x-direction
+ncoor[:][2] : y-direction
+
+nqp : number of quadrature points per direction
+
+nen : number of nodes per element
+
+type : type of the element
+"plane stress" or "plane strain"
+
+mat : material properies
+mat[1] : Young’s modulus
+mat[2] : Poison’s ratio
+
+Output:
+shp(3,4) : shape functions array
+shp(1,:) : derivatives in the x-direction
+shp(2,:) : derivatives in the y-direction
+shp(3,:) : shape functions
+
+*/
+k_el_2D_plane_numerical(ncoor, mat, nqp, nen, type) :=
+block([current_point, coef, i, l],
+
+/* initialize the elemental stiffness matrix */
+K_el : zeromatrix(2*nen, 2*nen),
+
+if (nen = 4) then (
+/* calculate the quadrature points */
+qps : quadrature_2d(nqp))
+elseif (nen = 3) then (
+qps : bfloat(symmetric_quadrature_2d(nqp))
+),
+
+/* loop over the quadrature points */
+for l:1 thru nqp do(
+
+/* store the current quadrature point coordinates */
+current_point[1] : qps[l,1],
+current_point[2] : qps[l,2],
+
+/* calculate the shape functions and their derivatives at the current quadrature point*/
+if (nen = 4) then (
+[shape, jac] : shape_functions_2d(current_point, ncoor) )
+elseif (nen = 3) then (
+[shape, jac] : triangular_shape_functions_2d(current_point, ncoor)
+),
+
+/* calculation of B-matrix */
+B_mat : zeromatrix(nen*2,3),
+for i:1 thru nen do (
+B_mat[(i-1)*2+1,1] : shape[1,i],
+B_mat[(i-1)*2+1,3] : shape[2,i],
+B_mat[(i-1)*2+2,2] : shape[2,i],
+B_mat[(i-1)*2+2,3] : shape[1,i]
+),
+
+/* calculation of BT_matrix */
+BT_mat : transpose(B_mat),
+
+/* calculation of the elasticity matrix */
+C_mat : zeromatrix(3,3),
+if (type = "plane stress") then (
+coef : mat[1]/(1-mat[2]^2),
+C_mat[1,1] : 1.0,
+C_mat[1,2] : mat[2],
+C_mat[2,1] : mat[2],
+C_mat[2,2] : 1.0,
+C_mat[3,3] : (1-mat[2])/2.0,
+C_mat : coef*C_mat
+) elseif (type = "plane strain") then (
+coef : mat[1]/((1+mat[2])*(1-2*mat[2])),
+C_mat[1,1] : 1-mat[2],
+C_mat[1,2] : mat[2],
+C_mat[2,1] : mat[2],
+C_mat[2,2] : 1-mat[2],
+C_mat[3,3] : (1-2*mat[2])/2.0,
+C_mat : coef*C_mat
+),
+
+/* calculation of thickness */
+current_point_x : 0,
+current_point_y : 0,
+for i:1 thru nen do(
+current_point_x : current_point_x + ncoor[i][1]*shape[3,i],
+current_point_y : current_point_y + ncoor[i][2]*shape[3,i]
+),
+th : thickness(current_point_x,current_point_y),
+K_el : K_el + th*(B_mat.(C_mat.BT_mat))*jac*qps[l,3]
+
+),
+
+/* return the elemental stiffness matrix */
+return(K_el)
+)$
+
+/*
+2D linear elasticity element
+plane stres and plane strain
+elemental stiffness matrix
+analytical integration
+
+Inputs:
+ncoor(2,4) : nodal point coordinates
+ncoor[1,:] : x-direction
+ncoor[2,:] : y-direction
+
+nen : number of nodes per element
+
+type : type of the element
+"plane stress" or "plane strain"
+
+mat : material properies
+mat[1] : Young’s modulus
+mat[2] : Poison’s ratio
+
+Output:
+shp(3,4) : shape functions array
+shp(1,:) : derivatives in the x-direction
+shp(2,:) : derivatives in the y-direction
+shp(3,:) : shape functions
+
+*/
+k_el_2D_Reissner_Mindlin_plate_analytical(ncoor, mat, nen) :=
+block([current_point, coef, i, l, xi, eta],
+
+/* initialize the elemental stiffness matrix */
+K_el : zeromatrix(3*nen, 3*nen),
+
+/* store the current quadrature point coordinates */
+current_point[1] : xi,
+current_point[2] : eta,
+
+/* calculate the shape functions and their derivatives at the current quadrature point*/
+[shape, jac] : shape_functions_2d(current_point, ncoor),
+
+/* calculation of B-matrix */
+B_mat : zeromatrix(nen*3,5),
+for i:1 thru nen do (
+B_mat[(i-1)*3+1,4] : shape[1,i],
+B_mat[(i-1)*3+1,5] : shape[2,i],
+B_mat[(i-1)*3+2,2] : -1*shape[2,i],
+B_mat[(i-1)*3+2,3] : -1*shape[1,i],
+B_mat[(i-1)*3+2,5] : -1*shape[3,i],
+B_mat[(i-1)*3+3,1] : shape[1,i],
+B_mat[(i-1)*3+3,3] : shape[2,i],
+B_mat[(i-1)*3+3,4] : shape[3,i]
+),
+
+/* calculation of BT_matrix */
+BT_mat : transpose(B_mat),
+
+/* calculation of thickness */
+current_point_x : 0,
+current_point_y : 0,
+for i:1 thru nen do(
+current_point_x : current_point_x + ncoor[i][1]*shape[3,i],
+current_point_y : current_point_y + ncoor[i][2]*shape[3,i]
+),
+th : thickness(current_point_x,current_point_y),
+
+/* calculation of the elasticity matrix */
+D_mat : zeromatrix(5,5),
+
+D_mat[1,1] : D_b,
+D_mat[1,2] : D_b*mat[2],
+D_mat[2,1] : D_b*mat[2],
+D_mat[2,2] : D_b,
+D_mat[3,3] : D_b*((1-mat[2])/2),
+
+D_mat[4,4] : D_s,
+D_mat[5,5] : D_s,
+
+
+K_el : integrate(integrate((B_mat.(D_mat.BT_mat))*jac,eta,-1,1),xi,-1,1),
+
+/* return the elemental stiffness matrix */
+return(K_el)
+)$
+
+/*
+2D Reissner Mindlin Plate Element
+elemental stiffness matrix
+numerical integration
+
+Inputs:
+ncoor[4][2] : nodal point coordinates
+ncoor[:][1] : x-direction
+ncoor[:][2] : y-direction
+
+nqp : number of quadrature points per direction
+
+nen : number of nodes per element
+
+type : type of the element
+"plane stress" or "plane strain"
+
+mat : material properies
+mat[1] : Young’s modulus
+mat[2] : Poison’s ratio
+
+Output:
+shp(3,4) : shape functions array
+shp(1,:) : derivatives in the x-direction
+shp(2,:) : derivatives in the y-direction
+shp(3,:) : shape functions
+
+*/
+k_el_2D_Reissner_Mindlin_plate_numerical(ncoor, mat, nqp, nen) :=
+block([current_point, coef, i, l],
+
+/* initialize the elemental stiffness matrix */
+K_el : zeromatrix(3*nen, 3*nen),
+
+/* calculate the quadrature points */
+qps : (quadrature_2d(nqp)),
+
+/* loop over the quadrature points */
+for l:1 thru nqp do(
+
+/* store the current quadrature point coordinates */
+current_point[1] : qps[l,1],
+current_point[2] : qps[l,2],
+
+/* calculate the shape functions and their derivatives at the current quadrature point*/
+[shape, jac] : shape_functions_2d(current_point, ncoor),
+
+/* calculation of B-matrix */
+B_mat : zeromatrix(nen*3,5),
+for i:1 thru nen do (
+B_mat[(i-1)*3+1,4] : shape[1,i],
+B_mat[(i-1)*3+1,5] : shape[2,i],
+B_mat[(i-1)*3+2,2] : -1*shape[2,i],
+B_mat[(i-1)*3+2,3] : -1*shape[1,i],
+B_mat[(i-1)*3+2,5] : -1*shape[3,i],
+B_mat[(i-1)*3+3,1] : shape[1,i],
+B_mat[(i-1)*3+3,3] : shape[2,i],
+B_mat[(i-1)*3+3,4] : shape[3,i]
+),
+
+/* calculation of BT_matrix */
+BT_mat : transpose(B_mat),
+
+/* calculation of thickness */
+current_point_x : 0,
+current_point_y : 0,
+for i:1 thru nen do(
+current_point_x : current_point_x + ncoor[i][1]*shape[3,i],
+current_point_y : current_point_y + ncoor[i][2]*shape[3,i]
+),
+th : thickness(current_point_x,current_point_y),
+
+/* calculation of the elasticity matrix */
+D_mat : zeromatrix(5,5),
+
+D_mat[1,1] : D_b,
+D_mat[1,2] : D_b*mat[2],
+D_mat[2,1] : D_b*mat[2],
+D_mat[2,2] : D_b,
+D_mat[3,3] : D_b*((1-mat[2])/2),
+
+D_mat[4,4] : D_s,
+D_mat[5,5] : D_s,
+
+
+K_el : K_el + (B_mat.(D_mat.BT_mat))*jac*qps[l,3]
+
+),
+
+/* return the elemental stiffness matrix */
+return(K_el)
+)$
+
+/*
+Global (Master) Stiffness Matrix
+2D Plate Problem
+
+Inputs:
+nodxz Nodal coordinates
+elenod Element end nodes
+lint Number of quadrature points
+nen Number of element nodes
+Output:
+K_els Local stiffness matrix for individual elements
+K Global (Master) Stiffness matrix
+*/
+k_gl_2D_Kirschhoff_Plate(nodxy, elenod, elemat, nen, type, numerical) :=
+block([numele,numnod,neldof,e,eftab,i,j,ii,jj,ncoor,Ke,K,K_els],
+numele : length(elenod),
+numnod : length(nodxy),
+K : zeromatrix(3*numnod, 3*numnod),
+for e:1 thru numele do (
+eftab : makelist(0,nen*3),
+ncoor : makelist(0,nen),
+for i:1 thru nen do(
+eftab[3*i-2] : 3*elenod[e][i]-2,
+eftab[3*i-1] : 3*elenod[e][i]-1,
+eftab[3*i] : 3*elenod[e][i],
+ncoor[i] : nodxy[elenod[e][i]],
+mat : elemat[e]
+),
+if (numerical) then (
+Ke : k_el_2D_Kirschhoff_plate_numerical(ncoor, mat, nen, nqp) )
+else (
+Ke : k_el_2D_Kirschhoff_plate_analytical(ncoor, mat, nen)
+),
+K_els[e] : Ke,
+neldof: length(Ke),
+i1 : 0,
+for i:1 thru neldof do(
+ii : eftab[i],
+for j:1 thru neldof do(
+jj : eftab[j],
+K[ii,jj] : K[ii,jj]+Ke[i,j]
+)
+)
+),
+return([K_els,K])
+)$
+
+/*
+Global (Master) Stiffness Matrix
+2D Planar Problem
+
+Inputs:
+nodxz Nodal coordinates
+elenod Element end nodes
+lint Number of quadrature points
+nen Number of element nodes
+Output:
+K_els Local stiffness matrix for individual elements
+K Global (Master) Stiffness matrix
+*/
+k_gl_2D_plane(nodxy, elenod, elemat, nen, type, numerical) :=
+block([numele,numnod,neldof,e,eftab,i,j,ii,jj,ncoor,Ke,K,K_els],
+numele : length(elenod),
+numnod : length(nodxy),
+K : zeromatrix(2*numnod, 2*numnod),
+for e:1 thru numele do (
+eftab : makelist(0,nen*2),
+ncoor : makelist(0,nen),
+for i:1 thru nen do(
+eftab[2*i-1] : 2*elenod[e][i]-1,
+eftab[2*i] : 2*elenod[e][i],
+ncoor[i] : nodxy[elenod[e][i]],
+mat : elemat[e]
+),
+if (numerical) then (
+Ke : k_el_2D_plane_numerical(ncoor, mat, nqp, nen, type) )
+else (
+Ke : k_el_2D_plane_analytical(ncoor, mat, nen, type)
+),
+K_els[e] : Ke,
+neldof: length(Ke),
+i1 : 0,
+for i:1 thru neldof do(
+ii : eftab[i],
+for j:1 thru neldof do(
+jj : eftab[j],
+K[ii,jj] : K[ii,jj]+Ke[i,j]
+)
+)
+),
+return([K_els,K])
+)$
+
+/*
+Global (Master) Stiffness Matrix
+2D Reissner Mindlin Plate Problem
+
+Inputs:
+nodxz Nodal coordinates
+elenod Element end nodes
+lint Number of quadrature points
+nen Number of element nodes
+
+Output:
+K_els Local stiffness matrix for individual elements
+K Global (Master) Stiffness matrix
+
+*/
+k_gl_2D_Reissner_Mindlin_plate(nodxy, elenod, elemat, nen, type, numerical) :=
+block([numele,numnod,neldof,e,eftab,i,j,ii,jj,ncoor,Ke,K,K_els],
+numele : length(elenod),
+numnod : length(nodxy),
+K : zeromatrix(3*numnod, 3*numnod),
+for e:1 thru numele do (
+eftab : makelist(0,nen*3),
+ncoor : makelist(0,nen),
+for i:1 thru nen do(
+eftab[3*i-2] : 3*elenod[e][i]-2,
+eftab[3*i-1] : 3*elenod[e][i]-1,
+eftab[3*i] : 3*elenod[e][i],
+ncoor[i] : nodxy[elenod[e][i]],
+mat : elemat[e]
+),
+if (numerical) then (
+Ke : k_el_2D_Reissner_Mindlin_plate_numerical(ncoor, mat, nqp, nen) )
+else (
+Ke : k_el_2D_Reissner_Mindlin_plate_analytical(ncoor, mat, nen)
+),
+K_els[e] : Ke,
+neldof: length(Ke),
+i1 : 0,
+for i:1 thru neldof do(
+ii : eftab[i],
+for j:1 thru neldof do(
+jj : eftab[j],
+K[ii,jj] : K[ii,jj]+Ke[i,j]
+)
+)
+),
+return([K_els,K])
+)$
+
+/*
+2D Plate Problem - Solution Driver
+
+Inputs:
+nodxy Nodal coordinates
+elenod Element end nodes
+elemat Element material properties
+elefab Element fabrication properties
+nodtag Nodal freedom tags list
+nodval Nodal freedom values list
+
+Outputs:
+noddis Nodal displacements
+nodfor Nodal forces
+elefor Element forces
+elesig Element stresses
+
+*/
+KirschhoffPlateElementsSolution(nodxy, elenod, elemat, nodtag, nodval,numerical) :=
+block([K,Kmod,f,fmod,u,noddis,nodfor,elefor,elesig,eftab,Ke,i,c],
+/* calculate the global stiffness matrix */
+[K_els, K] : k_gl_2D_Kirschhoff_Plate(nodxy, elenod, elemat, nen, type,numerical),
+/* calculate the modified global stiffness matrix */
+Kmod : ModifiedMasterStiffness(nodtag,K),
+/* calculate the global force matrix */
+f : transpose(FlatNodePartVector(nodval)),
+f : f + ratsimp(body_gl_2D_Kirschhoff_Plate(nodxy, elenod, nen)),
+
+/* calculate the modified global force matrix */
+fmod : ModifiedNodeForces(nodtag,nodval,K,f),
+
+
+/* solve the system of equation for displacements */
+u : invert(Kmod).fmod,
+
+/* transform u to noddis (distinguished nodal displacements) */
+noddis : zeromatrix(length(u)/3,3),
+c : 0,
+for i: 1 thru (length(u)/3) do(
+c : c + 1,
+noddis[i] : args(append(u[(c-1)*3+1],u[(c-1)*3+2],u[(c-1)*3+3]))
+),
+return([float(noddis),Kmod,fmod])
+)$
+
+
+/*
+Modified Global (Master) Stiffness Matrix
+Inputs:
+nodtag Nodal freedom tags list
+K Global (master) stiffness matrix
+Output:
+Kmod Modified global (master) stiffness matrix
+*/
+ModifiedMasterStiffness(nodtag, K) :=
+block([i,j,k,n:length(K),pdof,np,Kmod:copymatrix(K)],
+pdof : PrescDispDOFTags(nodtag),
+np : length(pdof),
+for k:1 thru np do (
+i : pdof[k],
+for j:1 thru n do (
+Kmod [i,j] : Kmod [j,i] : 0
+),
+Kmod[i,i] : 1
+),
+return(Kmod)
+)$
+
+/*
+Modified Nodal Forces Matrix
+Inputs:
+nodtag Nodal freedom tags list
+nodval Nodal freedom values list
+K Global (master) stiffness matrix
+f Global (master) force matrix
+Output:
+fmod Modified global (master) force matrix
+*/
+ModifiedNodeForces(nodtag, nodval, K, f) :=
+block([i,j,k,n:length(K),pdof,pval,np,d,c,fmod:copymatrix(f)],
+pdof : PrescDispDOFTags(nodtag),
+np : length(pdof),
+pval : PrescDispDOFValues(nodtag, nodval),
+c : makelist(1,n),
+for k:1 thru np do (
+i : pdof[k],
+c[i] : 0
+),
+for k:1 thru np do (
+i : pdof[k],
+d : pval[k],
+fmod[i,1] : d,
+if (d#0) then (
+for j:1 thru n do (
+fmod[j,1] : fmod[j,1] - K[i,j]*c[j]*d
+))
+),
+return(fmod)
+)$
+
+/*
+Solver
+Solves the system of equation Kmod*u=fmod
+Inputs:
+Kmod Modified stiffness matrix
+fmod Modified force matrix
+Outputs:
+u_glob Results (displacements)
+*/
+newsolver(Kmod, fmod) :=
+block([u,i,u_solv,u_glob],
+u: zeromatrix(length(Kmod),1),
+for i: 1 thru length(Kmod) do (
+u[i][1]: concat(’u_,i)
+),
+/* establish the system of equations to solve*/
+eqns : Kmod.u - fmod,
+/* check for zero elements in "eqns" */
+for i:1 thru length(eqns) do(
+if (float(eqns[i][1])=0.0) then (
+eqns[i][1] : concat(’u_,i)
+)),
+u_glob : zeromatrix(length(eqns),1),
+u_solv : solve(flatten(args(eqns)),flatten(args(u))),
+for i:1 thru length(u_glob) do(
+u_glob[i][1] : second(u_solv[1][i])
+),
+return(u_glob)
+)$
+
+/*
+2D Planar Problem - Solution Driver
+Inputs:
+nodxy Nodal coordinates
+elenod Element end nodes
+elemat Element material properties
+elefab Element fabrication properties
+nodtag Nodal freedom tags list
+nodval Nodal freedom values list
+Outputs:
+noddis Nodal displacements
+nodfor Nodal forces
+elefor Element forces
+elesig Element stresses
+*/
+PlanarElementsSolution(nodxy, elenod, elemat, edges, pressures, body, nodtag,nodval, numerical) :=
+block([K,Kmod,f,fmod,u,noddis,nodfor,elefor,elesig,eftab,Ke,i,c],
+/* calculate the global stiffness matrix */
+[K_els, K] : k_gl_2D_plane(nodxy, elenod, elemat, nen, type, numerical),
+/* calculate the modified global stiffness matrix */
+Kmod : ModifiedMasterStiffness(nodtag,K),
+/* calculate the global force matrix */
+if (nen = 4) then (
+f : f_edges_2D_plane_analytical(nodxy, pressures, length(nodxy), edges) )
+elseif (nen = 3) then (
+f : triangular_f_edges_2D_plane_analytical(nodxy, pressures,length(nodxy), edges)
+),
+f:f+ transpose(FlatNodePartVector(nodval)),
+f : f + body_gl_2D_Plane(nodxy, elenod, nen, body),
+/* calculate the modified global force matrix */
+fmod : ModifiedNodeForces(nodtag,nodval,K,f),
+/* solve the system of equation for displacements */
+u : invert(bfloat(Kmod)).fmod,
+/* transform u to noddis (distinguished nodal displacements) */
+noddis : zeromatrix(length(u)/2,2),
+c : 0,
+for i: 1 thru (length(u)/2) do(
+c : c + 1,
+noddis[i] : args(append(u[(c-1)*2+1],u[(c-1)*2+2]))
+),
+return([noddis,Kmod,fmod])
+)$
+
+/*
+Creates polynomial functions
+Inputs:
+xi coordinate values
+nen Number of element nodes
+Outputs:
+A A array
+CHI CHI array
+*/
+polynomial_maker(nen, xi):=
+block([i],
+a : makelist(0,nen),
+chi: makelist(0,nen),
+for i: 1 thru nen do (
+a[i] : concat(’a_,i-1),
+if (i=1 and xi=0) then (
+chi[i] : 1 )
+else (
+chi[i]: (xi^(i-1)) )
+),
+return([a,chi])
+)$
+
+/*
+(Prescribed) Displacement DOF Tags
+Inputs:
+nodtag Nodal freedom tags list
+Output:
+pdof Prescribed displacement DOF tags list
+*/
+PrescDispDOFTags(nodtag) :=
+block([j,n,numnod:length(nodtag),pdof:[],k:0,m],
+for n:1 thru numnod do (
+m : length(nodtag[n]),
+for j:1 thru m do (
+if (is(nodtag[n][j] > 0)) then pdof : append(pdof, [k+j])
+),
+k:k+m
+),
+return(pdof)
+)$
+
+/*
+(Prescribed) Displacement DOF Values
+Inputs:
+nodtag Nodal freedom tags list
+nodval Nodal freedom values list
+Output:
+pval Prescribed displacement DOF values
+*/
+PrescDispDOFValues(nodtag, nodval) :=
+block([j,n,numnod:length(nodtag),pval:[],k:0,m],
+for n:1 thru numnod do (
+m : length(nodtag[n]),
+for j:1 thru m do (
+if (is(nodtag[n][j] > 0)) then pval : append(pval, [nodval[n][j]])
+),
+k:k+m
+),
+return(pval)
+)$
+
+/*
+Gauss Quadrature
+Inputs:
+nqp Number of quadrature points
+Output:
+qp Quadrature points array
+*/
+quadrature_1d(nqp) :=
+block([p,q,v,w,x,qp],
+qp : zeromatrix(nqp,2),
+if (nqp=1) then
+(qp[1,1] : 0,
+qp[1,2] : 2)
+elseif (nqp=2) then
+(qp[1,1] : -1/sqrt(3),
+qp[1,2] : 1,
+qp[2,1] : 1/sqrt(3),
+qp[2,2] : 1)
+elseif (nqp=3) then
+(qp[1,1] : -sqrt(6/10),
+qp[1,2] : 5/9,
+qp[2,1] : 0,
+qp[2,2] : 8/9,
+qp[3,1] : +sqrt(6/10),
+qp[3,2] : 5/9)
+elseif (nqp=4) then
+(qp[1,1] : -(1/35)*sqrt(525+(70*sqrt(30))),
+qp[1,2] : (1/36)*(18-sqrt(30)),
+qp[2,1] : -(1/35)*sqrt(525-(70*sqrt(30))),
+qp[2,2] : (1/36)*(18+sqrt(30)),
+qp[3,1] : (1/35)*sqrt(525-(70*sqrt(30))),
+qp[3,2] : (1/36)*(18+sqrt(30)),
+qp[4,1] : (1/35)*sqrt(525+(70*sqrt(30))),
+qp[4,2] : (1/36)*(18-sqrt(30)))
+elseif (nqp=5) then
+(qp[1,1] : -(1/21)*sqrt(245+(14*sqrt(70))),
+qp[1,2] : (1/900)*(322-(13*sqrt(70))),
+qp[2,1] : -(1/21)*sqrt(245-(14*sqrt(70))),
+qp[2,2] : (1/900)*(322+(13*sqrt(70))),
+qp[3,1] : 0,
+qp[3,2] : 128/225,
+qp[4,1] : (1/21)*sqrt(245-(14*sqrt(70))),
+qp[4,2] : (1/900)*(322+(13*sqrt(70))),
+qp[5,1] : (1/21)*sqrt(245+(14*sqrt(70))),
+qp[5,2] : (1/900)*(322-(13*sqrt(70))))
+else
+(
+/*
+adapted from rosettacode.org
+https://rosettacode.org/wiki/Numerical_integration/
+Gauss-Legendre_Quadrature#Maxima
+*/
+bftorat:false, /* controls the conversion of bfloats to rational numbers */
+ratepsilon : 2.0e-14, /* the tolerance used in the conversion of floating point numbers to rational numbers */
+fpprec_backup : fpprec,
+fpprec : 32,
+p: expand(legendre_p(nqp, x)),
+q: expand(nqp/2*diff(p, x)*legendre_p(nqp - 1, x)),
+v: map(rhs, bfallroots(p)),
+w: map(lambda([z], 1/subst([x = z], q)), v),
+for i:1 thru nqp do (
+qp[i,1] : (v[i]),
+qp[i,2] : (w[i])
+),
+fpprec : fpprec_backup
+),
+return(qp)
+)$
+
+
+/*
+Gauss Quadrature - 2D
+Quadrilateral Elements
+
+Inputs:
+nqp Number of quadrature points
+Output:
+qp Quadrature points array
+*/
+quadrature_2d(nqp) :=
+block([p,q,v,w,x,qp],
+qp : zeromatrix(nqp,3),
+if (nqp=1) then
+(qp[1,1] : 0.0,
+qp[1,2] : 0.0,
+qp[1,3] : 4.0)
+elseif (nqp=4) then
+(qp[1,1] : -1/sqrt(3),
+qp[1,2] : -1/sqrt(3),
+qp[1,3] : 1.0,
+qp[2,1] : +1/sqrt(3),
+qp[2,2] : -1/sqrt(3),
+qp[2,3] : 1.0,
+qp[3,1] : +1/sqrt(3),
+qp[3,2] : +1/sqrt(3),
+qp[3,3] : 1.0,
+qp[4,1] : -1/sqrt(3),
+qp[4,2] : +1/sqrt(3),
+qp[4,3] : 1.0)
+elseif (nqp=9) then
+(qp[1,1] : -sqrt(6/10),
+qp[1,2] : -sqrt(6/10),
+qp[1,3] : 25/81,
+qp[2,1] : 0.0,
+qp[2,2] : -sqrt(6/10),
+qp[2,3] : 40/81,
+qp[3,1] : +sqrt(6/10),
+qp[3,2] : -sqrt(6/10),
+qp[3,3] : 25/81,
+qp[4,1] : -sqrt(6/10),
+qp[4,2] : 0.0,
+qp[4,3] : 40/81,
+qp[5,1] : 0.0,
+qp[5,2] : 0.0,
+qp[5,3] : 64/81,
+qp[6,1] : +sqrt(6/10),
+qp[6,2] : 0.0,
+qp[6,3] : 40/81,
+qp[7,1] : -sqrt(6/10),
+qp[7,2] : +sqrt(6/10),
+qp[7,3] : 25/81,
+qp[8,1] : 0.0,
+qp[8,2] : +sqrt(6/10),
+qp[8,3] : 40/81,
+qp[9,1] : +sqrt(6/10),
+qp[9,2] : +sqrt(6/10),
+qp[9,3] : 25/81)
+/*
+elseif (nqp=16) then
+(aq : rat(sqrt( (3/7) + (2/7)*sqrt(6/5))),
+aqw : rat((18 - sqrt(30))/36),
+bq : rat(sqrt( (3/7) - (2/7)*sqrt(6/5))),
+bqw : rat((18 + sqrt(30))/36),
+qp[1,1] : -aq,
+qp[1,2] : -aq,
+qp[1,3] : aqw^2,
+qp[2,1] : -bq,
+qp[2,2] : -aq,
+qp[2,3] : aqw*bqw,
+qp[3,1] : bq,
+qp[3,2] : -aq,
+qp[3,3] : aqw*bqw,
+qp[4,1] : aq,
+qp[4,2] : -aq,
+qp[4,3] : aqw^2,
+qp[5,1] : -aq,
+qp[5,2] : -bq,
+qp[5,3] : aqw*bqw,
+qp[6,1] : -bq,
+qp[6,2] : -bq,
+qp[6,3] : bqw^2,
+qp[7,1] : bq,
+qp[7,2] : -bq,
+qp[7,3] : bqw^2,
+qp[8,1] : aq,
+qp[8,2] : -bq,
+qp[8,3] : aqw*bqw,
+qp[9,1] : -aq,
+qp[9,2] : bq,
+qp[9,3] : aqw*bqw,
+qp[10,1] : -bq,
+qp[10,2] : bq,
+qp[10,3] : bqw^2,
+qp[11,1] : bq,
+qp[11,2] : bq,
+qp[11,3] : bqw^2,
+qp[12,1] : aq,
+qp[12,2] : bq,
+qp[12,3] : aqw*bqw,
+qp[13,1] : -aq,
+qp[13,2] : aq,
+qp[13,3] : aqw^2,
+qp[14,1] : -bq,
+qp[14,2] : aq,
+qp[14,3] : aqw*bqw,
+qp[15,1] : bq,
+qp[15,2] : aq,
+qp[15,3] : aqw*bqw,
+qp[16,1] : aq,
+qp[16,2] : aq,
+qp[16,3] : aqw^2)
+*/
+else(
+noqpd : sqrt(nqp),
+qp_temp1 : (quadrature_1d(noqpd)),
+l_temp : 1,
+for j1 : 1 thru noqpd do (
+for i1 : 1 thru noqpd do (
+qp[l_temp,1] : qp_temp1[i1,1],
+qp[l_temp,2] : qp_temp1[j1,1],
+qp[l_temp,3] : qp_temp1[i1,2]*qp_temp1[j1,2],
+l_temp : l_temp + 1
+)
+) ),
+
+return(qp)
+)$
+
+/*
+2D Reissner Mindlin Plate Problem - Solution Driver
+
+Inputs:
+nodxy Nodal coordinates
+elenod Element end nodes
+elemat Element material properties
+elefab Element fabrication properties
+nodtag Nodal freedom tags list
+nodval Nodal freedom values list
+
+Outputs:
+noddis Nodal displacements
+nodfor Nodal forces
+elefor Element forces
+elesig Element stresses
+
+*/
+ReissnerMindlinPlateElementsSolution(nodxy, elenod, elemat, nodtag, nodval,numerical) :=
+block([K,Kmod,f,fmod,u,noddis,nodfor,elefor,elesig,eftab,Ke,i,c],
+/* calculate the global stiffness matrix */
+[K_els, K] : k_gl_2D_Reissner_Mindlin_plate(nodxy, elenod, elemat, nen,type, numerical),
+/* calculate the modified global stiffness matrix */
+Kmod : ModifiedMasterStiffness(nodtag,K),
+/* calculate the global force matrix */
+/*
+if (nen = 4) then (
+f : f_edges_2D_plane_analytical(nodxy, pressures, length(nodxy), edges) )
+elseif (nen = 3) then (
+f : triangular_f_edges_2D_plane_analytical(nodxy, pressures,length(nodxy), edges)
+),
+*/
+f : transpose(FlatNodePartVector(nodval)),
+f : f + ratsimp(body_gl_2D_Reissner_Mindlin_plate(nodxy, elenod, nen)),
+/* calculate the modified global force matrix */
+fmod : ModifiedNodeForces(nodtag,nodval,K,f),
+
+/* solve the system of equation for displacements */
+u : invert(Kmod).fmod,
+/* transform u to noddis (distinguished nodal displacements) */
+noddis : zeromatrix(length(u)/3,3),
+c : 0,
+for i: 1 thru (length(u)/3) do(
+c : c + 1,
+noddis[i] : args(append(u[(c-1)*3+1],u[(c-1)*3+2],u[(c-1)*3+3]))
+),
+return([float(noddis),Kmod,fmod])
+)$
+
+/*
+Shape Functions Routine (1D) - N nodes
+Inputs:
+nen Number of element nodes
+ncoor_temp Nodal coordinates
+xi_val Local coordinate value
+Outputs:
+NNN Shape functions
+dNN First derivatives of the shape functions
+jac Jacobian
+*/
+shape_1d_nNodes_rod(nen, ncoor_temp, xi_val):=
+block([i,j,xi,u,AA_inv,chi_val,AA,chi,x1,y1,x2,y2,x21,y21,LL,L,
+NNN,dNN,jac],
+u : makelist(0,nen),
+AA : zeromatrix(nen,nen),
+AA_inv : zeromatrix(nen,nen),
+for i: 1 thru nen do (
+xi : -1 + (i-1)*(2/(nen-1)),
+[a, chi] : polynomial_maker(nen,xi),
+u[i] : chi.transpose(a),
+for j:1 thru nen do(
+AA_inv[i][j] : coeff(u[i],a[j])
+)
+),
+AA : invert(AA_inv),
+kill(xi),
+[a, chi] : polynomial_maker(nen,xi),
+chi_val : subst(xi_val,xi,chi),
+NNN : subst(xi_val,xi,chi_val.AA),
+dNN : subst(xi_val,xi,diff(chi.AA,xi)),
+/* jacobian */
+[[x1,y1],[x2,y2]] : [ncoor_temp[1],ncoor_temp[nen]],
+[x21,y21] : [x2-x1,y2-y1],
+LL : (x21^2+y21^2),
+L : sqrt(LL),
+jac : L/2,
+NNN : NNN,
+dNN : dNN/jac,
+return([NNN,dNN,jac])
+)$
+
+/*
+2D linear shape function routine
+
+Inputs:
+point(2) : coordinates of the point
+point[1] : xi-direction
+point[2] : eta-direction
+
+ncoor[4][2] : nodal point coordinates
+ncoor[:][1] : x-direction
+ncoor[:][2] : y-direction
+
+Output:
+shp(3,4) : shape functions array
+shp(1,:) : derivatives in the x-direction
+shp(2,:) : derivatives in the y-direction
+shp(3,:) : shape functions
+*/
+shape_functions_2d(point, ncoor) :=
+block([],
+
+/* calculation of the shape function values on "point" */
+shp[3,1] : (1/4)*(1-point[1])*(1-point[2]),
+shp[3,2] : (1/4)*(1+point[1])*(1-point[2]),
+shp[3,3] : (1/4)*(1+point[1])*(1+point[2]),
+shp[3,4] : (1/4)*(1-point[1])*(1+point[2]),
+
+/* calculation of derivatives of shape function on "point" */
+
+/* local derivatives */
+/* wrt. xi */
+shp[1,1] : (1/4)*(-1+point[2]),
+shp[1,2] : (1/4)*(+1-point[2]),
+shp[1,3] : (1/4)*(+1+point[2]),
+shp[1,4] : (1/4)*(-1-point[2]),
+/* wrt. eta */
+shp[2,1] : (1/4)*(-1+point[1]),
+shp[2,2] : (1/4)*(-1-point[1]),
+shp[2,3] : (1/4)*(+1+point[1]),
+shp[2,4] : (1/4)*(+1-point[1]),
+
+dxdxi[1,1] : 0.0,
+dxdxi[2,1] : 0.0,
+dxdxi[1,2] : 0.0,
+dxdxi[2,2] : 0.0,
+
+/* geometrical derivatives */
+for i:1 thru 4 do (
+dxdxi[1,1] : dxdxi[1,1] + shp[1,i]*ncoor[i][1],
+dxdxi[2,1] : dxdxi[2,1] + shp[1,i]*ncoor[i][2],
+dxdxi[1,2] : dxdxi[1,2] + shp[2,i]*ncoor[i][1],
+dxdxi[2,2] : dxdxi[2,2] + shp[2,i]*ncoor[i][2]
+),
+
+/* the Jacobian */
+jac : dxdxi[1,1]*dxdxi[2,2] - dxdxi[2,1]*dxdxi[1,2],
+
+/* geometrical derivatives (inverse) */
+dxidx[1,1] : +(1/jac)*dxdxi[2,2],
+dxidx[1,2] : -(1/jac)*dxdxi[1,2],
+dxidx[2,1] : -(1/jac)*dxdxi[2,1],
+dxidx[2,2] : +(1/jac)*dxdxi[1,1],
+
+/* global derivatives of shape functions */
+/* to avoid introducing new variables for the global derivatives of the shape functions, we will
+replace the previously calculated local derivatives with the new ones. Note that since the
+calculation of shp[2,i] needs the local value of shp[1,i] (and in the same way, the calculation
+of shp[1,i] needs shp[2,i] in the local coordinates), we first store the value of global shp[1,i]
+in to the "temp" variable, and after calculating shp[2,i] in global coordinates we replace
+shp[1,i] with "temp". */
+
+for i:1 thru 4 do (
+temp : shp[1,i]*dxidx[1,1] + shp[2,i]*dxidx[2,1],
+shp[2,i] : shp[1,i]*dxidx[1,2] + shp[2,i]*dxidx[2,2],
+shp[1,i] : temp
+),
+/* return the shape function array and the jacobian */
+return([shp,jac])
+)$
+
+/*
+2D linear shape function routine
+for the classical plate
+
+Inputs:
+point(2) : coordinates of the point
+point[1] : xi-direction
+point[2] : eta-direction
+
+ncoor[4][2] : nodal point coordinates
+ncoor[:][1] : x-direction
+ncoor[:][2] : y-direction
+
+Output:
+shp(3,3,4) : shape functions array
+shp(:,1,:):u(DOF)
+shp(:,2,:) : phi_x (DOF)
+shp(:,3,:) : phi_y (DOF)
+shp(1,:,:) : first derivatives in the x-direction
+shp(2,:,:) : first derivatives in the y-direction
+shp(3,:,:) : shape functions
+
+shp2s(3,3,4) : second derivatives of shape functions
+shp2s(1,:,:) : d2(N) / d(x^2)
+shp2s(2,:,:) : d2(N) / d(y^2)
+shp2s(3,:,:) : d2(N) / (d(x) d(y))
+
+*/
+shape_functions_2d_Kirschhoff_plate(point, ncoor) :=
+block([shp,shp2s_l,dxdxi,dxidx,dxidx2,shp2s,shp_l,jac],
+/* local coordinates of nodes */
+
+/* Node 1: */
+xi_l[1] : -1,
+eta_l[1] : -1,
+/* Node 2: */
+xi_l[2] : +1,
+eta_l[2] : -1,
+/* Node 3: */
+xi_l[3] : +1,
+eta_l[3] : +1,
+/* Node 4: */
+xi_l[4] : -1,
+eta_l[4] : +1,
+
+
+/* geometrical derivatives */
+/* calculation of the shape function values on "point" */
+shp_l[3,1] : (1/4)*(1-point[1])*(1-point[2]),
+shp_l[3,2] : (1/4)*(1+point[1])*(1-point[2]),
+shp_l[3,3] : (1/4)*(1+point[1])*(1+point[2]),
+shp_l[3,4] : (1/4)*(1-point[1])*(1+point[2]),
+
+/* calculation of derivatives of shape function on "point" */
+
+/* local derivatives */
+/* wrt. xi */
+shp_l[1,1] : (1/4)*(-1+point[2]),
+shp_l[1,2] : (1/4)*(+1-point[2]),
+shp_l[1,3] : (1/4)*(+1+point[2]),
+shp_l[1,4] : (1/4)*(-1-point[2]),
+/* wrt. eta */
+shp_l[2,1] : (1/4)*(-1+point[1]),
+shp_l[2,2] : (1/4)*(-1-point[1]),
+shp_l[2,3] : (1/4)*(+1+point[1]),
+shp_l[2,4] : (1/4)*(+1-point[1]),
+
+dxdxi[1,1] : 0.0,
+dxdxi[2,1] : 0.0,
+dxdxi[1,2] : 0.0,
+dxdxi[2,2] : 0.0,
+
+for i:1 thru 4 do (
+dxdxi[1,1] : dxdxi[1,1] + shp_l[1,i]*ncoor[i][1],
+dxdxi[2,1] : dxdxi[2,1] + shp_l[1,i]*ncoor[i][2],
+dxdxi[1,2] : dxdxi[1,2] + shp_l[2,i]*ncoor[i][1],
+dxdxi[2,2] : dxdxi[2,2] + shp_l[2,i]*ncoor[i][2]
+),
+
+/* the Jacobian */
+jac : dxdxi[1,1]*dxdxi[2,2] - dxdxi[2,1]*dxdxi[1,2],
+
+/* geometrical derivatives (inverse) */
+dxidx[1,1] : +(1/jac)*dxdxi[2,2],
+dxidx[1,2] : -(1/jac)*dxdxi[1,2],
+dxidx[2,1] : -(1/jac)*dxdxi[2,1],
+dxidx[2,2] : +(1/jac)*dxdxi[1,1],
+
+/* calculation of the shape function values on "point" */
+
+for i:1 thru 4 do (
+shp[3,1,i] : (1/8)*(1+xi_p*xi_l[i])*(1+eta_p*eta_l[i])*(2+xi_p*xi_l[i]
++eta_p*eta_l[i]-xi_p^2-eta_p^2),
+shp[3,2,i] : (dxidx[2,2]^-1)/8*eta_l[i]*(1+xi_p*xi_l[i])*(eta_p*eta_l[i]
+-1)*(1+eta_p*eta_l[i])^2,
+shp[3,3,i] : -(dxidx[1,1]^-1)/8*xi_l[i]*(xi_p*xi_l[i]-1)*(1+eta_p
+*eta_l[i])*(1+xi_p*xi_l[i])^2
+),
+
+/* calculation of derivatives of shape function on "point" */
+
+/* local derivatives */
+/* wrt. xi */
+for i:1 thru 4 do ( /* loop over nodes */
+for j:1 thru 3 do ( /* loop over degrees of freedom */
+/* d(N_u) / d(xi) */
+shp[1,j,i] :at(rat(diff(shp[3,j,i],xi_p,1)),[xi_p=point[1],eta_p=point[2]]),
+/* d(N_u) / d(eta) */
+shp[2,j,i] :at(rat(diff(shp[3,j,i],eta_p,1)),[xi_p=point[1],eta_p=point[2]]),
+/* d2(N_u) / d(xi^2) */
+shp2s_l[1,j,i] :at(rat(diff(shp[3,j,i],xi_p,2)),[xi_p=point[1],eta_p=point[2]]),
+/* d2(N_u) / d(eta^2) */
+shp2s_l[2,j,i] :at(rat(diff(shp[3,j,i],eta_p,2)),[xi_p=point[1],eta_p=point[2]]),
+/* d2(N_u) / (d(xi) d(eta)) */
+shp2s_l[3,j,i] :at(rat(diff(diff(shp[3,j,i],eta_p,1),xi_p,1)),[xi_p=point[1],
+eta_p=point[2]])
+)
+),
+
+/* calculation of the shape functions based on the quadrature point coordinates */
+for i:1 thru 4 do ( /* loop over nodes */
+for j:1 thru 3 do ( /* loop over degrees of freedom */
+shp[3,j,i] : at(rat(shp[3,j,i]),[xi_p=point[1],eta_p=point[2]])
+)
+),
+
+
+ddxidxdxi[1,1] : 0.0, /* d^2(xi)/(d(x)(dxi) */
+ddxidxdxi[1,2] : 0.0, /* d^2(xi)/(d(x)(deta) */
+ddxidxdxi[2,1] : 0.0, /* d^2(xi)/(d(y)(dxi) */
+ddxidxdxi[2,2] : 0.0, /* d^2(xi)/(d(y)(deta) */
+ddxidxdxi[3,1] : 0.0, /* d^2(eta)/(d(x)(dxi) */
+ddxidxdxi[3,2] : 0.0, /* d^2(eta)/(d(x)(deta) */
+ddxidxdxi[4,1] : 0.0, /* d^2(eta)/(d(y)(dxi) */
+ddxidxdxi[4,2] : 0.0, /* d^2(eta)/(d(y)(deta) */
+for i:1 thru 4 do (
+for j:1 thru 2 do (
+ddxidxdxi[1,j] : ddxidxdxi[1,j] + shp_l[j,i]*dxidx[j,1],
+ddxidxdxi[2,j] : ddxidxdxi[2,j] + shp_l[j,i]*dxidx[j,2],
+ddxidxdxi[3,j] : ddxidxdxi[3,j] + shp_l[j,i]*dxidx[j,1],
+ddxidxdxi[4,j] : ddxidxdxi[4,j] + shp_l[j,i]*dxidx[j,2]
+)
+),
+/* Eqs. (4.53)-(4.58) */
+
+
+dxidx2[1,1] : ddxidxdxi[1,1]*dxidx[1,1] + ddxidxdxi[1,2]*dxidx[2,1],
+dxidx2[1,2] : ddxidxdxi[2,1]*dxidx[1,2] + ddxidxdxi[2,2]*dxidx[2,2],
+dxidx2[1,3] : ddxidxdxi[1,1]*dxidx[1,2] + ddxidxdxi[1,2]*dxidx[2,2],
+dxidx2[2,1] : ddxidxdxi[3,1]*dxidx[1,1] + ddxidxdxi[3,2]*dxidx[2,1],
+dxidx2[2,2] : ddxidxdxi[4,1]*dxidx[1,2] + ddxidxdxi[4,2]*dxidx[2,2],
+dxidx2[2,3] : ddxidxdxi[3,1]*dxidx[1,2] + ddxidxdxi[3,2]*dxidx[2,2],
+
+/* global derivatives of shape functions */
+/* to avoid introducing new variables for the global derivatives of the shape functions, we will
+replace the previously calculated local derivatives with the new ones.
+Note that since the calculation of shp[2,i] needs the local value of shp[1,i] (and in the same way, the calculation
+of shp[1,i] needs shp[2,i] in the local coordinates), we first store the value of global shp[1,i]
+in to the "temp" variable, and after calculating shp[2,i] in global coordinates we replace
+shp[1,i] with "temp". */
+
+for i:1 thru 4 do ( /* loop over nodes */
+for j:1 thru 3 do ( /* loop over degrees of freedom */
+shp2s[1,j,i] : factor(ratsimp(shp2s_l[1,j,i]*dxidx[1,1]^2 + shp2s_l[2,j,i]*dxidx[2,1]^2+2*shp2s_l[3,j,i]*dxidx[1,1]
+*dxidx[2,1]+shp[1,j,i]*dxidx2[1,1]+shp[2,j,i]*dxidx2[2,1])),
+shp2s[2,j,i] : factor(ratsimp(shp2s_l[1,j,i]*dxidx[1,2]^2 + shp2s_l[2,j,i]*dxidx[2,2]^2+2*shp2s_l[3,j,i]*dxidx[1,2]
+*dxidx[2,2]+shp[1,j,i]*dxidx2[1,2]+shp[2,j,i]*dxidx2[2,2])),
+shp2s[3,j,i] : factor(ratsimp(shp2s_l[1,j,i]*dxidx[1,1]*dxidx[1,2] + shp2s_l[2,j,i]*dxidx[2,1]*dxidx[2,2]+shp2s_l[3,j,i]*(dxidx[1,1]
+*dxidx[2,2]+dxidx[1,2]*dxidx[2,1])+shp[2,j,i]*dxidx2[1,3]
++shp[2,j,i]*dxidx2[2,3]))
+)
+),
+
+for i:1 thru 4 do ( /* loop over nodes */
+for j:1 thru 3 do ( /* loop over degrees of freedom */
+temp : factor(ratsimp(shp[1,j,i]*dxidx[1,1] + shp[2,j,i]*dxidx[2,1])),
+shp[2,j,i] : factor(ratsimp(shp[1,j,i]*dxidx[1,2] + shp[2,j,i]*dxidx[2,2])),
+shp[1,j,i] : temp
+)
+),
+
+/* return the shape function array and the jacobian */
+return([(shp),(shp2s),(jac),(shp_l)])
+)$
+
+/*
+2D linear elasticity element
+plane stress and plane strain
+strains on quadrature points
+numerical integration
+
+Inputs:
+ncoor[4][2] : nodal point coordinates
+ncoor[:][1] : x-direction
+ncoor[:][2] : y-direction
+
+nqp : number of quadrature points per direction
+
+nen : number of nodes per element
+
+displ : nodal displacements
+
+type : type of the element
+"plane stress" or "plane strain"
+
+Output:
+strain : strains on quadrature points
+
+*/
+strain_el_2D_plane_numerical(ncoor, nqp, nen, displ, type) :=
+block([current_point, coef, i, l],
+
+/* calculate the quadrature points */
+qps : quadrature_2d(nqp),
+
+/* loop over the quadrature points */
+for l:1 thru nqp do(
+
+/* initialize the elemental stiffness matrix */
+strain[l] : zeromatrix(3, 1),
+
+/* store the current quadrature point coordinates */
+current_point[1] : qps[l,1],
+current_point[2] : qps[l,2],
+
+/* calculate the shape functions and their derivatives at the current quadrature point*/
+[shape, jac] : shape_functions_2d(current_point, ncoor),
+
+/* calculation of B-matrix */
+B_mat : zeromatrix(8,3),
+for i:1 thru nen do (
+B_mat[(i-1)*2+1,1] : shape[1,i],
+B_mat[(i-1)*2+1,3] : shape[2,i],
+B_mat[(i-1)*2+2,2] : shape[2,i],
+B_mat[(i-1)*2+2,3] : shape[1,i]
+),
+
+/* calculation of BT_matrix */
+BT_mat : transpose(B_mat),
+
+/* calculation of strains on the current quadrature point */
+strain[l] : float(BT_mat.displ)
+
+),
+
+/* return the strains on quadrature points */
+return(strain)
+)$
+
+/*
+2D linear elasticity element
+plane stress and plane strain
+stresses on quadrature points
+
+Inputs:
+mat : material properties
+
+nqp : number of quadrature points per direction
+
+strains : nodal displacements
+
+type : type of the element
+"plane stress" or "plane strain"
+
+Output:
+stress : strains on quadrature points
+
+*/
+stress_el_2D_plane_numerical(mat, nqp, strain, type) :=
+block([current_point, coef, i, l],
+
+/* calculation of the elasticity matrix */
+if (type = "plane stress") then (
+C_mat : zeromatrix(3,3),
+coef : mat[1]/(1-mat[2]^2),
+C_mat[1,1] : 1,
+C_mat[1,2] : mat[2],
+C_mat[2,1] : mat[2],
+C_mat[2,2] : 1,
+C_mat[3,3] : (1-mat[2])/2,
+C_mat : coef*C_mat
+) elseif (type = "plane strain") then (
+C_mat : zeromatrix(3,3),
+coef : mat[1]/((1+mat[2])*(1-2*mat[2])),
+C_mat[1,1] : 1-mat[2],
+C_mat[1,2] : mat[2],
+C_mat[2,1] : mat[2],
+C_mat[2,2] : 1-mat[2],
+C_mat[3,3] : (1-2*mat[2])/2,
+C_mat : coef*C_mat
+),
+
+/* loop over the quadrature points */
+for l:1 thru nqp do(
+
+/* calculation of stresses on the current quadrature point */
+stress[l] : float(C_mat.strain[l])
+
+),
+
+/* return the stresses on quadrature points */
+return(stress)
+)$
+
+/*
+Symmetric Gauss Quadrature
+Triangular Elements
+
+Inputs:
+nqp Number of quadrature points
+Output:
+qp Quadrature points array
+*/
+symmetric_quadrature_2d(nqp) :=
+block([p,q,v,w,x,qp],
+qp : zeromatrix(nqp,3),
+if (nqp=1) then
+(qp[1,1] : 1/3,
+qp[1,2] : 1/3,
+qp[1,3] : 1/2)
+elseif (nqp=3) then
+(qp[1,1] : 1/6,
+qp[1,2] : 1/6,
+qp[1,3] : 1/6,
+qp[2,1] : 2/3,
+qp[2,2] : 1/6,
+qp[2,3] : 1/6,
+qp[3,1] : 1/6,
+qp[3,2] : 2/3,
+qp[3,3] : 1/6)
+elseif (nqp=4) then
+(qp[1,1] : 1/3,
+qp[1,2] : 1/3,
+qp[1,3] : -9/32,
+qp[2,1] : 3/5,
+qp[2,2] : 1/5,
+qp[2,3] : 25/96,
+qp[3,1] : 1/5,
+qp[3,2] : 3/5,
+qp[3,3] : 25/96,
+qp[4,1] : 1/5,
+qp[4,2] : 1/5,
+qp[4,3] : 25/96)
+elseif (nqp=7) then
+(qp[1,1] : 0.0,
+qp[1,2] : 0.0,
+qp[1,3] : 1/40,
+qp[2,1] : 1/2,
+qp[2,2] : 0.0,
+qp[2,3] : 1/15,
+qp[3,1] : 1.0,
+qp[3,2] : 0.0,
+qp[3,3] : 1/40,
+qp[4,1] : 1/2,
+qp[4,2] : 1/2,
+qp[4,3] : 1/15,
+qp[5,1] : 0.0,
+qp[5,2] : 1.0,
+qp[5,3] : 1/40,
+qp[6,1] : 0.0,
+qp[6,2] : 1/2,
+qp[6,3] : 1/15,
+qp[7,1] : 1/3,
+qp[7,2] : 1/3,
+qp[7,3] : 9/40)
+else(
+print("nqp value not supported!")
+),
+return(qp)
+)$
+
+/*
+2D linear elasticity element
+elemental force matrix
+pressure based
+analytical integration
+triangular element
+
+Inputs:
+ncoor(2,3) : nodal point coordinates
+ncoor[1,:] : x-direction
+ncoor[2,:] : y-direction
+
+nen : number of nodes per element
+pressures : pressures in the x- and y-directions
+
+Output:
+
+f_el : elemental force matrix
+
+*/
+triangular_f_edges_2D_plane_analytical(ncoor, pressures_e, nen, edges_e) :=
+block([],
+
+/* initialize the elemental stiffness matrix */
+f_el : zeromatrix(2*nen, 1),
+
+/* loop over all edges */
+for e:1 thru length(edges_e) do (
+/* loop over all nodal pairs of the edges */
+for n:1 thru (length(edges[e])-1) do (
+Px_e[1] : pressures_e[e][1][1],
+Py_e[1] : pressures_e[e][1][2],
+Px_e[2] : pressures_e[e][2][1],
+Py_e[2] : pressures_e[e][2][2],
+
+n1 : edges_e[e][n],
+n2 : edges_e[e][n+1],
+ncoor_temp : [ncoor[n1], ncoor[n2]],
+
+/* calculate the shape functions and their derivatives at the quadrature point*/
+shape_temp[1,1] : xi,
+shape_temp[1,2] : 1.0 - xi,
+jac_temp : sqrt((ncoor_temp[2][2]-ncoor_temp[1][2])^2 + (ncoor_temp[2][1]-ncoor_temp[1][1])^2),
+
+Px : 0.0,
+Py : 0.0,
+for i:1 thru 2 do (
+Px : Px + shape_temp[1,i]*Px_e[i],
+Py : Py + shape_temp[1,i]*Py_e[i]
+),
+
+/* calcualtion of N_temp */
+
+/* define an array to store N matrices temporarily */
+N_temp : zeromatrix(nen*2,1),
+
+N_temp[n1*2 - 1,1] : shape_temp[1,1]*Px,
+N_temp[n1*2,1] : shape_temp[1,1]*Py,
+N_temp[n2*2 - 1,1] : shape_temp[1,2]*Px,
+N_temp[n2*2,1] : shape_temp[1,2]*Py,
+
+/* calculation of thickness on the current edge */
+current_point_x : 0,
+current_point_y : 0,
+for i:1 thru 2 do(
+current_point_x : current_point_x + ncoor_temp[i][1]*shape_temp[1,i],
+current_point_y : current_point_y + ncoor_temp[i][2]*shape_temp[1,i]
+),
+th : thickness(current_point_x,current_point_y),
+
+f_el : f_el + integrate(th*(N_temp)*(jac_temp),xi,0,1)
+
+)
+),
+/* return the elemental force matrix */
+return(f_el)
+)$
+
+/*
+2D linear shape function routine
+(Triangular element)
+
+Inputs:
+point(2) : coordinates of the point
+point[1] : xi-direction
+point[2] : eta-direction
+
+ncoor[3][2] : nodal point coordinates
+ncoor[:][1] : x-direction
+ncoor[:][2] : y-direction
+
+Output:
+shp(3,3) : shape functions array
+shp(1,:) : derivatives in the x-direction
+shp(2,:) : derivatives in the y-direction
+shp(3,:) : shape functions
+*/
+triangular_shape_functions_2d(point, ncoor) :=
+block([],
+
+/* calculation of the shape function values on "point" */
+shp[3,1] : point[1],
+shp[3,2] : point[2],
+shp[3,3] : 1.0 - point[1] - point[2],
+
+/* calculation of derivatives of shape function on "point" */
+
+/* local derivatives */
+/* wrt. xi */
+shp[1,1] : 1.0,
+shp[1,2] : 0.0,
+shp[1,3] : -1.0,
+/* wrt. eta */
+shp[2,1] : 0.0,
+shp[2,2] : 1.0,
+shp[2,3] : -1.0,
+
+dxdxi[1,1] : 0.0,
+dxdxi[2,1] : 0.0,
+dxdxi[1,2] : 0.0,
+dxdxi[2,2] : 0.0,
+
+/* geometrical derivatives */
+for i:1 thru 3 do (
+dxdxi[1,1] : dxdxi[1,1] + shp[1,i]*ncoor[i][1],
+dxdxi[2,1] : dxdxi[2,1] + shp[1,i]*ncoor[i][2],
+dxdxi[1,2] : dxdxi[1,2] + shp[2,i]*ncoor[i][1],
+dxdxi[2,2] : dxdxi[2,2] + shp[2,i]*ncoor[i][2]
+),
+
+/* the Jacobian */
+jac : dxdxi[1,1]*dxdxi[2,2] - dxdxi[2,1]*dxdxi[1,2],
+
+/* geometrical derivatives (inverse) */
+dxidx[1,1] : +(1/jac)*dxdxi[2,2],
+dxidx[1,2] : -(1/jac)*dxdxi[1,2],
+dxidx[2,1] : -(1/jac)*dxdxi[2,1],
+dxidx[2,2] : +(1/jac)*dxdxi[1,1],
+
+/* global derivatives of shape functions */
+/* to avoid introducing new variables for the global derivatives of the shape functions, we will
+replace the previously calculated local derivatives with the new ones.
+Note that since the calculation of shp[2,i] needs the local value of shp[1,i] (and in the
+same way, the calculation of shp[1,i] needs shp[2,i] in the local coordinates), we first store the
+value of global shp[1,i] in to the "temp" variable, and after calculating shp[2,i] in global
+coordinates we replace shp[1,i] with "temp". */
+
+for i:1 thru 3 do (
+temp : shp[1,i]*dxidx[1,1] + shp[2,i]*dxidx[2,1],
+shp[2,i] : shp[1,i]*dxidx[1,2] + shp[2,i]*dxidx[2,2],
+shp[1,i] : temp
+),
+/* return the shape function array and the jacobian */
+return([shp,jac])
+)$
+
+/* end of file */
